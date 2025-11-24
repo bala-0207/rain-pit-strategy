@@ -248,41 +248,6 @@ Content-Type: application/json
 ```
 Returns optimal pit stop strategy with tire recommendation.
 
-#### Analytics Summary
-```http
-GET /api/analytics/summary
-```
-Returns dataset statistics and weather averages.
-
-## 📁 Project Structure
-
-```
-rain-pit-strategy/
-├── backend/
-│   ├── app.py                    # Main Flask application
-│   ├── model.py                  # ML model training and prediction
-│   ├── requirements.txt          # Python dependencies
-│   ├── Procfile                  # Deployment configuration
-│   └── data/
-│       └── raindata.csv          # Training dataset
-├── frontend/
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── Dashboard.jsx    # Weather monitoring page
-│   │   │   ├── Strategy.jsx     # Manual testing page
-│   │   │   └── Pitstop.jsx      # Strategy recommendation page
-│   │   ├── components/
-│   │   │   └── Navbar.jsx       # Navigation component
-│   │   ├── context/
-│   │   │   └── WeatherContext.jsx  # Shared state management
-│   │   ├── api.js               # API client
-│   │   ├── App.jsx              # Root component
-│   │   └── main.jsx             # Entry point
-│   ├── package.json             # Node dependencies
-│   └── vite.config.js           # Build configuration
-├── .gitignore
-└── README.md
-```
 
 ## 🌍 Deployment
 
@@ -291,7 +256,7 @@ rain-pit-strategy/
 #### Backend Deployment
 
 1. Push code to GitHub
-2. Go to [Render Dashboard](https://dashboard.render.com)
+2. Go to [Render Dashboard](https://rain-pit-strategy-ui.onrender.com/)
 3. Click **"New +"** → **"Web Service"**
 4. Connect your GitHub repository
 5. Configure:
@@ -365,28 +330,6 @@ Contributions are welcome! Please follow these steps:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📝 License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-## 👤 Author
-
-**Sathya Balasubramaniyan**
-- GitHub: [@bala-0207](https://github.com/bala-0207)
-
-## 🙏 Acknowledgments
-
-- Real F1 telemetry data for ML model training
-- OpenWeather API for live weather data
-- Render.com for free hosting
-- React and Flask communities
-
-## 📞 Support
-
-For issues, questions, or suggestions:
-- Open an [Issue](https://github.com/bala-0207/rain-pit-strategy/issues)
-- Contact: [Your Email]
-
 ## 🗺️ Roadmap
 
 - [ ] Add historical race analysis
@@ -402,3 +345,4 @@ For issues, questions, or suggestions:
 **Built with ❤️ for F1 enthusiasts and data science lovers**
 
 ⭐ Star this repo if you find it useful!
+
