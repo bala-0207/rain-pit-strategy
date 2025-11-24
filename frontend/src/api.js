@@ -52,6 +52,7 @@ export const strategyAPI = {
       current_lap: data.current_lap,
       total_laps: data.total_laps,
       current_tire: data.current_tire,
+      weather_data: data.weather_data || {}, // Pass weather data if available
     });
     return response.data;
   },

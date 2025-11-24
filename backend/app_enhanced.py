@@ -25,20 +25,17 @@ COTA_LON = -97.6411
 COTA_LOCATION = 'Circuit of the Americas, Austin, Texas'
 USE_LIVE_WEATHER = False
 
-# FORCE RETRAIN TO FIX PREDICTIONS
 try:
-    print("=" * 60)
-    print("🔄 RETRAINING MODEL WITH LATEST DATA...")
-    print("=" * 60)
-    rain_model.train(DATA_PATH)
-    rain_model.save_model(MODEL_PATH)
-    print("=" * 60)
-    print("✓ Model trained and ready!")
-    print("=" * 60)
+    if os.path.exists(MODEL_PATH):
+        rain_model.load_model(MODEL_PATH)
+        print("✓ Model loaded successfully")
+    else:
+        print("Training new model...")
+        rain_model.train(DATA_PATH)
+        rain_model.save_model(MODEL_PATH)
+        print("✓ Model trained and saved")
 except Exception as e:
-    print(f"⚠ Model initialization error: {e}")
-    import traceback
-    traceback.print_exc()
+    print(f"⚠ Model initialization: {e}")
 
 def fetch_live_weather_cota() -> Optional[dict]:
     """Fetch live weather from Circuit of the Americas (Austin, Texas)"""
@@ -151,6 +148,7 @@ def estimate_lap_time(tire_compound, rain_prob, track_condition='dry'):
             base_time -= 1.5  # Intermediates excel on damp track
         elif tire_compound.lower() in ['soft', 'medium', 'hard']:
             base_time += 3.0  # Dry tires on damp track
+
     
     # Add variance based on rain probability
     if rain_prob > 0.6:

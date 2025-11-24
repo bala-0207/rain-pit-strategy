@@ -16,6 +16,7 @@ const Strategy = () => {
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
   const [currentWeather, setCurrentWeather] = useState(null);
+  const [lastSentData, setLastSentData] = useState(null); // DEBUG: Track what was sent
 
   useEffect(() => {
     loadCurrentWeather();
@@ -49,8 +50,19 @@ const Strategy = () => {
 
   const handlePredict = async () => {
     setLoading(true);
+    
+    // DEBUG: Save what we're sending
+    setLastSentData({
+      timestamp: new Date().toLocaleTimeString(),
+      data: { ...weatherData }
+    });
+    
+    console.log('🚀 SENDING TO BACKEND:', weatherData); // DEBUG LOG
+    
     try {
       const res = await predictionAPI.predictRain(weatherData);
+      console.log('✅ RECEIVED FROM BACKEND:', res); // DEBUG LOG
+      
       if (res.success) {
         setPrediction(res);
       }
@@ -87,6 +99,23 @@ const Strategy = () => {
                   Load Current Weather
                 </button>
               </div>
+
+              {/* DEBUG DISPLAY */}
+              {lastSentData && (
+                <div className="bg-blue-500/10 border border-blue-500 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-blue-400 font-bold mb-2">
+                    📤 Last Sent to Backend ({lastSentData.timestamp})
+                  </p>
+                  <div className="text-xs text-white space-y-1">
+                    <div>Air Temp: {lastSentData.data.air_temp}°C</div>
+                    <div>Track Temp: {lastSentData.data.track_temp}°C</div>
+                    <div>Humidity: {lastSentData.data.humidity}%</div>
+                    <div>Pressure: {lastSentData.data.pressure} hPa</div>
+                    <div>Wind Speed: {lastSentData.data.wind_speed} km/h</div>
+                    <div>Wind Direction: {lastSentData.data.wind_direction}°</div>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">

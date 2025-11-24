@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Flag, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Settings, Flag, Clock, TrendingUp, AlertTriangle, Zap } from 'lucide-react';
 import Card from '../components/Card';
 import { strategyAPI, predictionAPI, weatherAPI } from '../api';
 
@@ -11,6 +11,7 @@ const Pitstop = () => {
     rain_probability: 0,
   });
 
+  const [weatherData, setWeatherData] = useState(null);
   const [strategy, setStrategy] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -22,6 +23,8 @@ const Pitstop = () => {
     try {
       const weatherRes = await weatherAPI.getCurrentWeather();
       if (weatherRes.success) {
+        setWeatherData(weatherRes.data);
+        
         const predRes = await predictionAPI.predictRain({
           air_temp: weatherRes.data.air_temp,
           track_temp: weatherRes.data.track_temp,
@@ -36,6 +39,12 @@ const Pitstop = () => {
             ...prev,
             rain_probability: predRes.prediction.rain_probability,
           }));
+          
+          // Auto-calculate strategy when prediction loads
+          calculateStrategyWithData({
+            ...raceData,
+            rain_probability: predRes.prediction.rain_probability
+          }, weatherRes.data);
         }
       }
     } catch (err) {
@@ -50,18 +59,29 @@ const Pitstop = () => {
     }));
   };
 
-  const handleCalculateStrategy = async () => {
+  const calculateStrategyWithData = async (data, weather) => {
     setLoading(true);
     try {
-      const res = await strategyAPI.getPitstopStrategy(raceData);
+      const requestData = {
+        ...data,
+        weather_data: weather ? {
+          humidity: weather.humidity,
+          wind_speed: weather.wind_speed
+        } : {}
+      };
+      
+      const res = await strategyAPI.getPitstopStrategy(requestData);
       if (res.success) {
         setStrategy(res.strategy);
       }
     } catch (err) {
       console.error('Strategy calculation error:', err);
-      alert('Failed to calculate strategy. Make sure backend is running.');
     }
     setLoading(false);
+  };
+
+  const handleCalculateStrategy = async () => {
+    await calculateStrategyWithData(raceData, weatherData);
   };
 
   const getUrgencyColor = (urgency) => {
@@ -98,6 +118,24 @@ const Pitstop = () => {
     }
   };
 
+  const getTireColor = (tire) => {
+    switch (tire.toLowerCase()) {
+      case 'soft':
+        return 'bg-red-500';
+      case 'medium':
+        return 'bg-yellow-500';
+      case 'hard':
+        return 'bg-white';
+      case 'intermediate':
+        return 'bg-green-500';
+      case 'wet':
+      case 'full wet':
+        return 'bg-blue-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
   const tireCompounds = [
     { value: 'soft', label: 'Soft (Red)', color: 'bg-red-500' },
     { value: 'medium', label: 'Medium (Yellow)', color: 'bg-yellow-500' },
@@ -106,11 +144,17 @@ const Pitstop = () => {
     { value: 'wet', label: 'Full Wet (Blue)', color: 'bg-blue-500' },
   ];
 
+  const isRecommendedTire = (tireValue) => {
+    if (!strategy) return false;
+    const recommended = strategy.recommended_tire.toLowerCase();
+    return recommended.includes(tireValue);
+  };
+
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-white mb-2">Pit Stop Strategy</h1>
-        <p className="text-gray-400">Optimize your pit stop timing based on race conditions</p>
+        <p className="text-gray-400">AI-powered pit stop optimization based on live conditions</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -118,6 +162,24 @@ const Pitstop = () => {
         <div>
           <Card title="Race Parameters" icon={Flag}>
             <div className="space-y-4">
+              {/* Rain Probability - Auto-Synced (Read Only) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Rain Probability (Auto-Synced)
+                </label>
+                <div className="w-full bg-racing-dark/50 border border-racing-accent/50 rounded-lg px-4 py-3 flex items-center justify-between">
+                  <span className="text-white font-bold text-2xl">
+                    {(raceData.rain_probability * 100).toFixed(0)}%
+                  </span>
+                  <span className="text-racing-accent text-sm font-medium">
+                    ⚡ LIVE
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Synced from Weather Dashboard & Strategy Analyzer
+                </p>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">
                   Current Lap
@@ -159,33 +221,6 @@ const Pitstop = () => {
                     </option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Rain Probability
-                </label>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={raceData.rain_probability * 100}
-                    onChange={(e) =>
-                      handleInputChange('rain_probability', parseFloat(e.target.value) / 100)
-                    }
-                    className="flex-1"
-                  />
-                  <span className="text-white font-bold w-16 text-right">
-                    {(raceData.rain_probability * 100).toFixed(0)}%
-                  </span>
-                </div>
-                <button
-                  onClick={loadCurrentPrediction}
-                  className="racing-button-secondary text-sm py-2 px-4 mt-2"
-                >
-                  Load Current Prediction
-                </button>
               </div>
 
               <button
@@ -241,75 +276,142 @@ const Pitstop = () => {
         <div>
           {strategy ? (
             <div className="space-y-6">
-              {/* Main Recommendation */}
+              {/* Perfect Pitstop Prediction - MAIN FEATURE */}
               <Card
-                title="Pit Strategy Recommendation"
-                icon={Settings}
-                badge={strategy.urgency}
+                title="🏁 Perfect Pitstop Prediction"
+                icon={Zap}
+                className="border-2 border-racing-accent"
               >
-                <div className="space-y-4">
-                  <div className="text-center py-6 border-b border-racing-gray">
-                    <div className={`text-5xl font-bold mb-4 ${getUrgencyColor(strategy.urgency)}`}>
-                      {strategy.action}
-                    </div>
-                    <p className="text-xl text-white mb-2">{strategy.recommended_tire}</p>
-                    <span className={`px-4 py-2 rounded-lg font-bold ${getUrgencyBg(strategy.urgency)} text-white inline-block`}>
-                      {strategy.urgency} URGENCY
-                    </span>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-400 mb-2">Strategic Reasoning</p>
-                    <p className="text-white">{strategy.reasoning}</p>
-                  </div>
-
-                  {strategy.estimated_lap && (
-                    <div className="stat-card">
-                      <p className="text-sm text-gray-400">Recommended Pit Lap</p>
+                <div className="space-y-4 bg-gradient-to-br from-racing-accent/10 to-transparent p-4 rounded-lg">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-400 mb-1">Optimal Pitstop Lap</p>
                       <p className="text-3xl font-bold text-racing-accent">
                         Lap {strategy.estimated_lap}
                       </p>
                     </div>
-                  )}
-
-                  {strategy.stint_length && (
-                    <div className="stat-card">
-                      <p className="text-sm text-gray-400">Expected Stint Length</p>
+                    <div>
+                      <p className="text-xs text-gray-400 mb-1">Next Tyre Type</p>
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-3 h-3 rounded-full ${getTireColor(strategy.recommended_tire)}`}></div>
+                        <p className="text-lg font-bold text-white">
+                          {strategy.recommended_tire}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {strategy.expected_lap_time && (
+                    <div>
+                      <p className="text-xs text-gray-400 mb-1">Expected Lap Time After Pitstop</p>
                       <p className="text-2xl font-bold text-white">
-                        {strategy.stint_length} laps
+                        1:{String(Math.floor(strategy.expected_lap_time - 60)).padStart(2, '0')}.{String(Math.round((strategy.expected_lap_time % 1) * 10)).padStart(1, '0')}
                       </p>
                     </div>
                   )}
+                  
+                  <div className="border-t border-racing-gray pt-3">
+                    <p className="text-xs text-gray-400 mb-1">Reason</p>
+                    <p className="text-white font-medium">{strategy.reasoning}</p>
+                  </div>
+                </div>
+              </Card>
 
-                  {strategy.confidence && (
-                    <div>
-                      <p className="text-sm text-gray-400 mb-2">Confidence Level</p>
-                      <div className="flex items-center space-x-3">
-                        <div className="flex-1 bg-racing-dark rounded-full h-3">
-                          <div
-                            className={`h-3 rounded-full transition-all ${
-                              strategy.confidence === 'high' ? 'bg-green-500' :
-                              strategy.confidence === 'medium' ? 'bg-yellow-500' :
-                              'bg-red-500'
-                            }`}
-                            style={{
-                              width:
-                                strategy.confidence === 'high' ? '90%' :
-                                strategy.confidence === 'medium' ? '60%' : '30%',
-                            }}
-                          ></div>
+              {/* Rain Spike Alert - Conditional Display */}
+              {strategy.rain_spike && strategy.rain_spike.detected && (
+                <div className="bg-yellow-500/20 border-2 border-yellow-500 rounded-lg p-4 flex items-start space-x-3 animate-pulse">
+                  <AlertTriangle className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="text-yellow-500 font-bold text-lg">
+                      ⚠️ Rain spike detected at Lap {strategy.rain_spike.spike_lap}
+                    </p>
+                    <p className="text-white mt-1">
+                      Make pitstop before it
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* True Confidence Level */}
+              <Card title="Confidence Level" icon={TrendingUp}>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white font-bold uppercase">
+                      {strategy.confidence}
+                    </span>
+                    <span className="text-racing-accent font-bold">
+                      {strategy.confidence_value ? `${(strategy.confidence_value * 100).toFixed(0)}%` : ''}
+                    </span>
+                  </div>
+                  <div className="w-full bg-racing-dark rounded-full h-4">
+                    <div
+                      className={`h-4 rounded-full transition-all ${
+                        strategy.confidence === 'very high' ? 'bg-green-500' :
+                        strategy.confidence === 'high' ? 'bg-green-400' :
+                        strategy.confidence === 'medium' ? 'bg-yellow-500' :
+                        'bg-red-500'
+                      }`}
+                      style={{
+                        width: strategy.confidence_value 
+                          ? `${strategy.confidence_value * 100}%` 
+                          : strategy.confidence === 'very high' ? '90%' :
+                            strategy.confidence === 'high' ? '75%' :
+                            strategy.confidence === 'medium' ? '60%' : '40%'
+                      }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    Based on weather variance, track stability, and tyre degradation prediction
+                  </p>
+                </div>
+              </Card>
+
+              {/* Enhanced Tire Compound Guide */}
+              <Card title="Tyre Compound Guide" icon={TrendingUp}>
+                <div className="space-y-2">
+                  {tireCompounds.map((tire) => {
+                    const isCurrent = raceData.current_tire === tire.value;
+                    const isRecommended = isRecommendedTire(tire.value);
+                    
+                    return (
+                      <div
+                        key={tire.value}
+                        className={`flex items-center justify-between p-3 rounded-lg transition-all ${
+                          isCurrent && isRecommended
+                            ? 'bg-racing-accent/30 border-2 border-racing-accent shadow-lg shadow-racing-accent/50'
+                            : isCurrent
+                            ? 'bg-blue-500/20 border-2 border-blue-500'
+                            : isRecommended
+                            ? 'bg-green-500/20 border-2 border-green-500 shadow-md shadow-green-500/30'
+                            : 'bg-racing-dark border border-racing-gray'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-4 h-4 rounded-full ${tire.color} ${isRecommended ? 'ring-2 ring-green-400' : ''}`}></div>
+                          <span className={`${isCurrent || isRecommended ? 'text-white font-bold' : 'text-gray-400'}`}>
+                            {tire.label}
+                          </span>
                         </div>
-                        <span className="text-white font-bold uppercase">
-                          {strategy.confidence}
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          {isCurrent && (
+                            <span className="text-xs bg-blue-500 text-white font-bold px-2 py-1 rounded">
+                              CURRENT
+                            </span>
+                          )}
+                          {isRecommended && (
+                            <span className="text-xs bg-green-500 text-white font-bold px-2 py-1 rounded">
+                              RECOMMENDED
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
               </Card>
 
               {/* Action Items */}
-              <Card title="Action Items" icon={AlertTriangle}>
+              <Card title="Action Items" icon={Settings}>
                 <ul className="space-y-3">
                   {strategy.action === 'PIT NOW' && (
                     <>
@@ -327,7 +429,7 @@ const Pitstop = () => {
                       </li>
                     </>
                   )}
-                  {strategy.action === 'PREPARE' && (
+                  {(strategy.action === 'PREPARE' || strategy.action === 'PIT SOON') && (
                     <>
                       <li className="flex items-start space-x-3">
                         <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
@@ -343,7 +445,7 @@ const Pitstop = () => {
                       </li>
                     </>
                   )}
-                  {strategy.action === 'CONTINUE' && (
+                  {(strategy.action === 'CONTINUE' || strategy.action === 'MONITOR') && (
                     <>
                       <li className="flex items-start space-x-3">
                         <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
@@ -359,41 +461,34 @@ const Pitstop = () => {
                       </li>
                     </>
                   )}
+                  {strategy.action === 'STAY OUT' && (
+                    <>
+                      <li className="flex items-start space-x-3">
+                        <div className="w-2 h-2 bg-gray-500 rounded-full mt-2"></div>
+                        <p className="text-white">Stay out on current tires</p>
+                      </li>
+                      <li className="flex items-start space-x-3">
+                        <div className="w-2 h-2 bg-gray-500 rounded-full mt-2"></div>
+                        <p className="text-white">Current strategy is optimal</p>
+                      </li>
+                      <li className="flex items-start space-x-3">
+                        <div className="w-2 h-2 bg-gray-500 rounded-full mt-2"></div>
+                        <p className="text-white">Continue monitoring conditions</p>
+                      </li>
+                    </>
+                  )}
                 </ul>
-              </Card>
-
-              {/* Tire Strategy Visual */}
-              <Card title="Tire Compound Guide" icon={TrendingUp}>
-                <div className="space-y-2">
-                  {tireCompounds.map((tire) => (
-                    <div
-                      key={tire.value}
-                      className={`flex items-center justify-between p-3 rounded-lg ${
-                        raceData.current_tire === tire.value
-                          ? 'bg-racing-accent/20 border border-racing-accent'
-                          : 'bg-racing-dark'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-4 h-4 rounded-full ${tire.color}`}></div>
-                        <span className="text-white">{tire.label}</span>
-                      </div>
-                      {raceData.current_tire === tire.value && (
-                        <span className="text-xs bg-racing-accent text-racing-dark font-bold px-2 py-1 rounded">
-                          CURRENT
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
               </Card>
             </div>
           ) : (
             <Card title="Awaiting Strategy Calculation" icon={Settings}>
               <div className="text-center py-12">
-                <Settings className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400">
-                  Enter race parameters and click "Calculate Pit Strategy" to get recommendations
+                <Zap className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400 mb-4">
+                  AI-powered strategy ready to calculate
+                </p>
+                <p className="text-sm text-gray-500">
+                  The system will automatically sync rain probability and provide optimal pitstop recommendations
                 </p>
               </div>
             </Card>
