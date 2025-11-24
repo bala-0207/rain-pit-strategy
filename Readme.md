@@ -249,87 +249,6 @@ Content-Type: application/json
 Returns optimal pit stop strategy with tire recommendation.
 
 
-## 🌍 Deployment
-
-### Deploying to Render.com (Free)
-
-#### Backend Deployment
-
-1. Push code to GitHub
-2. Go to [Render Dashboard](https://rain-pit-strategy-ui.onrender.com/)
-3. Click **"New +"** → **"Web Service"**
-4. Connect your GitHub repository
-5. Configure:
-   - **Name:** `rain-pit-strategy`
-   - **Root Directory:** `backend`
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `gunicorn app:app`
-   - **Environment Variables:**
-     - `PYTHON_VERSION` = `3.11.0`
-6. Click **"Create Web Service"**
-
-#### Frontend Deployment
-
-1. In Render Dashboard, click **"New +"** → **"Static Site"**
-2. Connect same repository
-3. Configure:
-   - **Name:** `rain-pit-strategy-ui`
-   - **Root Directory:** `frontend`
-   - **Build Command:** `npm install && npm run build`
-   - **Publish Directory:** `dist`
-   - **Environment Variables:**
-     - `VITE_API_URL` = `https://your-backend-url.onrender.com`
-4. Click **"Create Static Site"**
-
-### Environment Variables
-
-**Frontend (.env.production):**
-```env
-VITE_API_URL=https://rain-pit-strategy.onrender.com
-```
-
-**Backend (optional):**
-```env
-OPENWEATHER_API_KEY=your_api_key_here
-FLASK_ENV=production
-```
-
-## 🧪 Development
-
-### Running Tests
-
-```bash
-# Backend tests (if implemented)
-cd backend
-pytest
-
-# Frontend tests (if implemented)
-cd frontend
-npm test
-```
-
-### Code Quality
-
-```bash
-# Python linting
-cd backend
-flake8 app.py model.py
-
-# JavaScript linting
-cd frontend
-npm run lint
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
 ## 🗺️ Roadmap
 
 - [ ] Add historical race analysis
@@ -345,4 +264,5 @@ Contributions are welcome! Please follow these steps:
 **Built with ❤️ for F1 enthusiasts and data science lovers**
 
 ⭐ Star this repo if you find it useful!
+
 
