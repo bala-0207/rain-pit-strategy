@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Flag, Clock, TrendingUp, AlertTriangle, Zap } from 'lucide-react';
 import Card from '../components/Card';
-import { strategyAPI, predictionAPI, weatherAPI } from '../api';
+import { strategyAPI, predictionAPI } from '../api';
+import { useWeather } from '../context/WeatherContext';
 
 const Pitstop = () => {
+  const { weatherData: sharedWeather, source: sharedSource } = useWeather();
+  
   const [raceData, setRaceData] = useState({
     current_lap: 1,
     total_laps: 50,
@@ -15,37 +18,52 @@ const Pitstop = () => {
   const [strategy, setStrategy] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Use shared weather data when available
   useEffect(() => {
-    loadCurrentPrediction();
-  }, []);
+    if (sharedWeather) {
+      setWeatherData(sharedWeather);
+      
+      // Predict rain with shared weather
+      predictRainProbability(sharedWeather);
+    } else {
+      loadCurrentPrediction();
+    }
+  }, [sharedWeather]);
+
+  const predictRainProbability = async (weather) => {
+    try {
+      const predRes = await predictionAPI.predictRain({
+        air_temp: weather.air_temp,
+        track_temp: weather.track_temp,
+        humidity: weather.humidity,
+        pressure: weather.pressure,
+        wind_speed: weather.wind_speed,
+        wind_direction: weather.wind_direction,
+      });
+
+      if (predRes.success) {
+        setRaceData((prev) => ({
+          ...prev,
+          rain_probability: predRes.prediction.rain_probability,
+        }));
+        
+        // Auto-calculate strategy
+        calculateStrategyWithData({
+          ...raceData,
+          rain_probability: predRes.prediction.rain_probability
+        }, weather);
+      }
+    } catch (err) {
+      console.error('Error predicting rain:', err);
+    }
+  };
 
   const loadCurrentPrediction = async () => {
     try {
       const weatherRes = await weatherAPI.getCurrentWeather();
       if (weatherRes.success) {
         setWeatherData(weatherRes.data);
-        
-        const predRes = await predictionAPI.predictRain({
-          air_temp: weatherRes.data.air_temp,
-          track_temp: weatherRes.data.track_temp,
-          humidity: weatherRes.data.humidity,
-          pressure: weatherRes.data.pressure,
-          wind_speed: weatherRes.data.wind_speed,
-          wind_direction: weatherRes.data.wind_direction,
-        });
-
-        if (predRes.success) {
-          setRaceData((prev) => ({
-            ...prev,
-            rain_probability: predRes.prediction.rain_probability,
-          }));
-          
-          // Auto-calculate strategy when prediction loads
-          calculateStrategyWithData({
-            ...raceData,
-            rain_probability: predRes.prediction.rain_probability
-          }, weatherRes.data);
-        }
+        await predictRainProbability(weatherRes.data);
       }
     } catch (err) {
       console.error('Error loading prediction:', err);
@@ -101,23 +119,6 @@ const Pitstop = () => {
     }
   };
 
-  const getUrgencyBg = (urgency) => {
-    switch (urgency) {
-      case 'CRITICAL':
-        return 'bg-racing-red animate-pulse';
-      case 'HIGH':
-        return 'bg-racing-red';
-      case 'MEDIUM':
-        return 'bg-yellow-500';
-      case 'LOW':
-        return 'bg-green-500';
-      case 'NONE':
-        return 'bg-gray-500';
-      default:
-        return 'bg-gray-500';
-    }
-  };
-
   const getTireColor = (tire) => {
     switch (tire.toLowerCase()) {
       case 'soft':
@@ -155,6 +156,11 @@ const Pitstop = () => {
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-white mb-2">Pit Stop Strategy</h1>
         <p className="text-gray-400">AI-powered pit stop optimization based on live conditions</p>
+        {sharedSource === 'strategy' && (
+          <div className="mt-2 inline-block bg-orange-500/20 border border-orange-500 rounded px-3 py-1">
+            <span className="text-orange-400 text-sm">📝 Using Strategy values (synced from Strategy page)</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -176,7 +182,9 @@ const Pitstop = () => {
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Synced from Weather Dashboard & Strategy Analyzer
+                  {sharedSource === 'strategy' 
+                    ? 'Synced from Strategy Analyzer' 
+                    : 'Synced from Weather Dashboard'}
                 </p>
               </div>
 

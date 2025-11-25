@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Target, TrendingUp, AlertCircle, Cloud, CheckCircle } from 'lucide-react';
 import Card from '../components/Card';
-import { weatherAPI, predictionAPI } from '../api';
+import { predictionAPI } from '../api';
+import { useWeather } from '../context/WeatherContext';
 
 const Strategy = () => {
+  const { weatherData: sharedWeather, updateWeatherFromStrategy, source } = useWeather();
+  
   const [weatherData, setWeatherData] = useState({
     air_temp: 28.5,
     track_temp: 42.0,
@@ -15,31 +18,21 @@ const Strategy = () => {
 
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [currentWeather, setCurrentWeather] = useState(null);
-  const [lastSentData, setLastSentData] = useState(null); // DEBUG: Track what was sent
+  const [lastSentData, setLastSentData] = useState(null);
 
+  // Load from shared context when available
   useEffect(() => {
-    loadCurrentWeather();
-  }, []);
-
-  const loadCurrentWeather = async () => {
-    try {
-      const res = await weatherAPI.getCurrentWeather();
-      if (res.success) {
-        setCurrentWeather(res.data);
-        setWeatherData({
-          air_temp: res.data.air_temp,
-          track_temp: res.data.track_temp,
-          humidity: res.data.humidity,
-          pressure: res.data.pressure,
-          wind_speed: res.data.wind_speed,
-          wind_direction: res.data.wind_direction,
-        });
-      }
-    } catch (err) {
-      console.error('Error loading weather:', err);
+    if (sharedWeather) {
+      setWeatherData({
+        air_temp: sharedWeather.air_temp,
+        track_temp: sharedWeather.track_temp,
+        humidity: sharedWeather.humidity,
+        pressure: sharedWeather.pressure,
+        wind_speed: sharedWeather.wind_speed,
+        wind_direction: sharedWeather.wind_direction,
+      });
     }
-  };
+  }, [sharedWeather]);
 
   const handleInputChange = (field, value) => {
     setWeatherData((prev) => ({
@@ -51,17 +44,20 @@ const Strategy = () => {
   const handlePredict = async () => {
     setLoading(true);
     
-    // DEBUG: Save what we're sending
+    // Update shared context with current values
+    updateWeatherFromStrategy(weatherData);
+    
+    // Save what we're sending
     setLastSentData({
       timestamp: new Date().toLocaleTimeString(),
       data: { ...weatherData }
     });
     
-    console.log('🚀 SENDING TO BACKEND:', weatherData); // DEBUG LOG
+    console.log('🚀 SENDING TO BACKEND:', weatherData);
     
     try {
       const res = await predictionAPI.predictRain(weatherData);
-      console.log('✅ RECEIVED FROM BACKEND:', res); // DEBUG LOG
+      console.log('✅ RECEIVED FROM BACKEND:', res);
       
       if (res.success) {
         setPrediction(res);
@@ -84,6 +80,11 @@ const Strategy = () => {
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-white mb-2">Race Strategy Analyzer</h1>
         <p className="text-gray-400">Input weather conditions to get AI-powered strategy recommendations</p>
+        {source === 'strategy' && (
+          <div className="mt-2 inline-block bg-orange-500/20 border border-orange-500 rounded px-3 py-1">
+            <span className="text-orange-400 text-sm">📝 Using Strategy values (synced to all pages)</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -91,15 +92,6 @@ const Strategy = () => {
         <div>
           <Card title="Weather Input" icon={Cloud}>
             <div className="space-y-4">
-              <div className="flex justify-end mb-4">
-                <button
-                  onClick={loadCurrentWeather}
-                  className="racing-button-secondary text-sm py-2 px-4"
-                >
-                  Load Current Weather
-                </button>
-              </div>
-
               {/* DEBUG DISPLAY */}
               {lastSentData && (
                 <div className="bg-blue-500/10 border border-blue-500 rounded-lg p-3 mb-4">

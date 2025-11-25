@@ -3,22 +3,59 @@ import { Cloud, Droplets, Wind, Gauge, Thermometer, AlertTriangle } from 'lucide
 import Card from '../components/Card';
 import SimpleChart from '../components/SimpleChart';
 import { weatherAPI, predictionAPI } from '../api';
+import { useWeather } from '../context/WeatherContext';
 
 const Dashboard = () => {
+  const { weatherData: sharedWeather, source: sharedSource } = useWeather();
+  
   const [currentWeather, setCurrentWeather] = useState(null);
   const [weatherHistory, setWeatherHistory] = useState([]);
   const [prediction, setPrediction] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [weatherSource, setWeatherSource] = useState(null); // NEW: Track weather source
-  const [weatherLocation, setWeatherLocation] = useState(null); // NEW: Track location
+  const [weatherSource, setWeatherSource] = useState(null);
+  const [weatherLocation, setWeatherLocation] = useState(null);
+
+  // Use shared weather data when available (from Strategy page)
+  useEffect(() => {
+    if (sharedWeather) {
+      setCurrentWeather(sharedWeather);
+      
+      // Make prediction with shared data
+      makePrediction(sharedWeather);
+    }
+  }, [sharedWeather]);
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
+    const interval = setInterval(() => {
+      // Only auto-refresh if NOT using strategy data
+      if (sharedSource !== 'strategy') {
+        fetchData();
+      }
+    }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [sharedSource]);
+
+  const makePrediction = async (weather) => {
+    try {
+      const predRes = await predictionAPI.predictRain({
+        air_temp: weather.air_temp,
+        track_temp: weather.track_temp,
+        humidity: weather.humidity,
+        pressure: weather.pressure,
+        wind_speed: weather.wind_speed,
+        wind_direction: weather.wind_direction,
+      });
+
+      if (predRes.success) {
+        setPrediction(predRes);
+      }
+    } catch (err) {
+      console.error('Prediction error:', err);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -32,24 +69,15 @@ const Dashboard = () => {
         weatherAPI.getAnalyticsSummary(),
       ]);
 
-      if (weatherRes.success) {
+      if (weatherRes.success && sharedSource !== 'strategy') {
         setCurrentWeather(weatherRes.data);
-        setWeatherSource(weatherRes.source || 'dataset'); // NEW: Set source
-        setWeatherLocation(weatherRes.location || 'Historical data'); // NEW: Set location
+        setWeatherSource(weatherRes.source || 'dataset');
+        setWeatherLocation(weatherRes.location || 'Historical data');
 
-        // Make prediction with current weather
-        const predRes = await predictionAPI.predictRain({
-          air_temp: weatherRes.data.air_temp,
-          track_temp: weatherRes.data.track_temp,
-          humidity: weatherRes.data.humidity,
-          pressure: weatherRes.data.pressure,
-          wind_speed: weatherRes.data.wind_speed,
-          wind_direction: weatherRes.data.wind_direction,
-        });
-
-        if (predRes.success) {
-          setPrediction(predRes);
-        }
+        await makePrediction(weatherRes.data);
+      } else if (weatherRes.success) {
+        setWeatherSource(weatherRes.source || 'dataset');
+        setWeatherLocation(weatherRes.location || 'Historical data');
       }
 
       if (historyRes.success) {
@@ -114,7 +142,14 @@ const Dashboard = () => {
         <h1 className="text-3xl font-bold text-white mb-2">Weather Dashboard</h1>
         <div className="flex items-center gap-3">
           <p className="text-gray-400">Real-time weather monitoring and rain prediction</p>
-          {weatherLocation && (
+          {sharedSource === 'strategy' ? (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500">•</span>
+              <span className="bg-orange-500/20 border border-orange-500 text-orange-400 text-xs px-3 py-1 rounded-full">
+                📝 Using Strategy values
+              </span>
+            </div>
+          ) : weatherLocation && (
             <div className="flex items-center gap-2">
               <span className="text-gray-500">•</span>
               <span className="text-racing-accent font-semibold">📍 {weatherLocation}</span>
