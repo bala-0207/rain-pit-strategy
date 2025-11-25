@@ -169,6 +169,25 @@ def health_check():
         'location': COTA_LOCATION if USE_LIVE_WEATHER else 'Dataset only'
     })
 
+@app.route('/', methods=['GET'])
+def home():
+    """Root endpoint - service info"""
+    return jsonify({
+        'service': 'Rain Pit Strategy AI - Backend',
+        'status': 'running',
+        'version': '1.0.0',
+        'endpoints': {
+            'health': '/api/health',
+            'predict': '/api/predict (POST)',
+            'current_weather': '/api/weather/current',
+            'weather_history': '/api/weather/history',
+            'pitstop_strategy': '/api/strategy/pitstop (POST)',
+            'analytics': '/api/analytics/summary'
+        },
+        'documentation': 'Send POST requests to /api/predict or /api/strategy/pitstop',
+        'timestamp': datetime.now().isoformat()
+    })
+
 @app.route('/api/predict', methods=['POST'])
 def predict_rain():
     """Predict rain probability based on weather data"""
