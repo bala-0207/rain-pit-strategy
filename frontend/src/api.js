@@ -1,3 +1,74 @@
+// import axios from 'axios';
+
+// const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';;
+
+// const api = axios.create({
+//   baseURL: API_BASE_URL,
+//   headers: {
+//     'Content-Type': 'application/json',
+//   },
+// });
+
+// export const weatherAPI = {
+//   // Get current weather
+//   getCurrentWeather: async () => {
+//     const response = await api.get('/weather/current');
+//     return response.data;
+//   },
+
+//   // Get weather history
+//   getWeatherHistory: async (limit = 50) => {
+//     const response = await api.get(`/weather/history?limit=${limit}`);
+//     return response.data;
+//   },
+
+//   // Get analytics summary
+//   getAnalyticsSummary: async () => {
+//     const response = await api.get('/analytics/summary');
+//     return response.data;
+//   },
+// };
+
+// export const predictionAPI = {
+//   // Predict rain probability
+//   predictRain: async (weatherData) => {
+//     const response = await api.post('/predict', {
+//       air_temp: weatherData.air_temp,
+//       track_temp: weatherData.track_temp,
+//       humidity: weatherData.humidity,
+//       pressure: weatherData.pressure,
+//       wind_speed: weatherData.wind_speed,
+//       wind_direction: weatherData.wind_direction,
+//     });
+//     return response.data;
+//   },
+// };
+
+// export const strategyAPI = {
+//   // Get pit stop strategy
+//   getPitstopStrategy: async (data) => {
+//     const response = await api.post('/strategy/pitstop', {
+//       rain_probability: data.rain_probability,
+//       current_lap: data.current_lap,
+//       total_laps: data.total_laps,
+//       current_tire: data.current_tire,
+//       weather_data: data.weather_data || {}, // Pass weather data if available
+//     });
+//     return response.data;
+//   },
+// };
+
+// export const healthAPI = {
+//   // Health check
+//   checkHealth: async () => {
+//     const response = await api.get('/health');
+//     return response.data;
+//   },
+// };
+
+// export default api;
+
+
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -10,29 +81,25 @@ const api = axios.create({
 });
 
 export const weatherAPI = {
-  // Get current weather
   getCurrentWeather: async () => {
-    const response = await api.get('/weather/current');
+    const response = await api.get('/api/weather/current');
     return response.data;
   },
 
-  // Get weather history
   getWeatherHistory: async (limit = 50) => {
-    const response = await api.get(`/weather/history?limit=${limit}`);
+    const response = await api.get(`/api/weather/history?limit=${limit}`);
     return response.data;
   },
 
-  // Get analytics summary
   getAnalyticsSummary: async () => {
-    const response = await api.get('/analytics/summary');
+    const response = await api.get('/api/analytics/summary');
     return response.data;
   },
 };
 
 export const predictionAPI = {
-  // Predict rain probability
   predictRain: async (weatherData) => {
-    const response = await api.post('/predict', {
+    const response = await api.post('/api/predict', {
       air_temp: weatherData.air_temp,
       track_temp: weatherData.track_temp,
       humidity: weatherData.humidity,
@@ -45,23 +112,21 @@ export const predictionAPI = {
 };
 
 export const strategyAPI = {
-  // Get pit stop strategy
   getPitstopStrategy: async (data) => {
-    const response = await api.post('/strategy/pitstop', {
+    const response = await api.post('/api/strategy/pitstop', {
       rain_probability: data.rain_probability,
       current_lap: data.current_lap,
       total_laps: data.total_laps,
       current_tire: data.current_tire,
-      weather_data: data.weather_data || {}, // Pass weather data if available
+      weather_data: data.weather_data || {},
     });
     return response.data;
   },
 };
 
 export const healthAPI = {
-  // Health check
   checkHealth: async () => {
-    const response = await api.get('/health');
+    const response = await api.get('/api/health');
     return response.data;
   },
 };
